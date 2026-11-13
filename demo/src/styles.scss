@@ -1,0 +1,284 @@
+@use './styles/tokens';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  line-height: 1.5;
+  color: var(--fg);
+
+  background: var(--bg);
+}
+
+code {
+  padding: 0.1em 0.35em;
+
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.9em;
+
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.app {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.app__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1rem;
+}
+
+.app__title {
+  margin: 0;
+
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.app__nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app__tab {
+  padding: 0.35rem 0.75rem;
+
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg);
+
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+
+  cursor: pointer;
+}
+
+.app__tab:hover {
+  border-color: var(--muted);
+}
+
+.app__tab[aria-current='page'] {
+  color: var(--bg);
+
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.app__main {
+  padding-top: 1.5rem;
+}
+
+// --- Wall -----------------------------------------------------------------
+
+.wall__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.wall__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  font-size: 0.95rem;
+
+  cursor: pointer;
+}
+
+.wall__hint {
+  margin: 0;
+
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.wall__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.wall__card {
+  margin: 0;
+  padding: 0.75rem;
+
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.wall__frames {
+  display: grid;
+  align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.75rem;
+}
+
+.wall__frame {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wall__label {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.wall__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.wall__native {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+// --- Playground -----------------------------------------------------------
+
+.playground {
+  display: grid;
+  align-items: start;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.playground__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  padding: 1rem;
+
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.playground__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.playground__field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.playground__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.playground__field select,
+.playground__field input[type='text'] {
+  padding: 0.35rem 0.5rem;
+
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg);
+
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.playground__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playground__stage {
+  width: 100%;
+  max-width: 34rem;
+  padding: 1rem;
+
+  background: var(--surface);
+  border: 1px dashed var(--muted);
+  border-radius: var(--radius);
+}
+
+.playground__stage--rounded {
+  max-width: 18rem;
+}
+
+.playground__caption {
+  margin: 0;
+
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.playground__code {
+  grid-column: 1 / -1;
+}
+
+.playground__heading {
+  margin: 0 0 0.5rem;
+
+  font-size: 0.95rem;
+}
+
+.playground__code pre {
+  margin: 0;
+  padding: 1rem;
+
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.playground__code code {
+  padding: 0;
+
+  font-size: 0.85rem;
+
+  background: none;
+  border-radius: 0;
+}
+
+@media (width <= 50rem) {
+  .playground {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

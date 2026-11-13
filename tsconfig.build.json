@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  // Tests never ship: dist/ is the published payload, and the jest-dom
+  // matchers they use are only typed via vitest.setup.ts (not included here).
+  "exclude": ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"]
+}

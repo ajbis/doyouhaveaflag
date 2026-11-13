@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "vite.config.ts",
+    "vite.lib.config.ts",
+    "vitest.config.ts",
+    // The consumer-facing .svg declaration. Sits in the node project rather
+    // than the app one: it must be lintable and typechecked, but it is not
+    // part of our own program (vite/client already declares *.svg there) and
+    // it must never be emitted into dist/ by the build.
+    "types/flags.d.ts"
+  ]
+}
