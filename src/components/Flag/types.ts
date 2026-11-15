@@ -1,3 +1,5 @@
+import type { ArtworkSource } from '../Artwork/types';
+
 /**
  * Display ratio for the flag box, written width:height so it matches both
  * `aspect-ratio` and the artwork's `viewBox`.
@@ -7,37 +9,31 @@
  */
 export type FlagRatio = '4:3' | '3:2' | '1:1' | 'native';
 
-/**
- * Which part of the artwork survives when `object-fit: cover` has to crop.
- *
- * `center` is the baseline and emits no rule of its own — the CSS default
- * already does the right thing, so a rule only appears where a flag deviates.
- */
-export type FlagAlign =
-  | 'center'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'top left'
-  | 'top right'
-  | 'bottom left'
-  | 'bottom right';
-
 export interface FlagProps {
   /**
-   * URL of the flag artwork. This is a real file, not an inlined string —
-   * import it from the package's flags subpath:
+   * The flag's artwork: its file, its root element id, and its own `viewBox`.
+   *
+   * A descriptor rather than a bare URL because the renderer needs the
+   * artwork's geometry and must not derive it by measuring — the `<use>` shadow
+   * tree is closed, so nothing inside it can be read back. Each flag already
+   * knows these three things, so they travel together:
    *
    *     import gb from 'doyouhaveaflag/flags/gb.svg'
+   *     <Flag artwork={{ id: 'gb', src: gb, viewBox: '0 0 50 30' }} />
+   *
+   * The `viewBox` is a fact about the file, so it belongs beside the import
+   * rather than in the markup — the tests assert it against what ships. The
+   * descriptor also carries `align`, the one crop decision that belongs to the
+   * flag rather than to the caller; `<Flag>` reads it from here instead of
+   * accepting it as a prop.
    */
-  src: string;
+  artwork: ArtworkSource;
 
   /** Display ratio. Defaults to `3:2`. */
   ratio?: FlagRatio;
 
   /**
-   * Accessible name for the image. Defaults to an empty string, which marks it
+   * Accessible name for the flag. Defaults to an empty string, which marks it
    * as decorative — pass real text when the flag carries meaning.
    */
   alt?: string;
@@ -48,10 +44,7 @@ export interface FlagProps {
    */
   lang?: string;
 
-  /** Crop alignment, used only when the display ratio forces a crop. */
-  align?: FlagAlign;
-
-  /** Extra class merged onto the `<picture>`, which always carries `flag`. */
+  /** Extra class merged onto the wrapper, which always carries `flag`. */
   className?: string;
 
   /**
@@ -60,6 +53,22 @@ export interface FlagProps {
    */
   rounded?: boolean;
 
-  /** Passed straight through to the `<img>`. */
+  /**
+   * When the flag's artwork is fetched. `lazy` mounts the reference once it
+   * nears the viewport, which is how a wall of flags stays cheap.
+   */
   loading?: 'lazy' | 'eager';
+
+  /**
+   * Render in black and white: ink becomes full black, the red tint one step
+   * down at 60%, paper stays white.
+   *
+   * This is decoration and UI states, so a green flag and a red flag look the
+   * same in mono — what matters is that no two regions *within* one flag share
+   * a tone. It works by setting `--flag-ink`, `--flag-tint` and `--flag-paper`
+   * on the wrapper; those custom properties are the one channel that reaches
+   * named shapes inside the artwork, and any ancestor can set them too, so
+   * brand colours need no API from us.
+   */
+  mono?: boolean;
 }

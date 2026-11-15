@@ -1,17 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 30">
-  <rect width="50" height="30" fill="#012169" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 30" id="gb">
+  <!--
+    Each paint is a var() with the flag's own colour as its fallback, so the
+    file renders identically when nothing supplies a value: an <img> sees only
+    the fallbacks, while a <use> host that sets the tone properties overrides
+    them.
+
+    The roles are ink (the ground), tint (one step lighter) and paper (the
+    lightest); their names live in the README rather than here, because an XML
+    comment may not contain a double hyphen and every custom property name
+    starts with two.
+
+    The class on each element is purely geometric, so a later offset/scale can
+    move a whole element without fighting its colour.
+  -->
+  <rect class="field" width="50" height="30" fill="var(--flag-ink, #012169)" />
   <clipPath id="gb-counterchange">
     <path d="M25,15h25v15zv15h-25zh-25v-15zv-15h25z" />
   </clipPath>
-  <path d="M0,0 50,30M50,0 0,30" stroke="#fff" stroke-width="6" />
   <path
+    class="saltire"
     d="M0,0 50,30M50,0 0,30"
+    fill="none"
+    stroke="var(--flag-paper, #fff)"
+    stroke-width="6"
+  />
+  <path
+    class="saltire"
+    d="M0,0 50,30M50,0 0,30"
+    fill="none"
     clip-path="url(#gb-counterchange)"
-    stroke="#C8102E"
+    stroke="var(--flag-tint, #C8102E)"
     stroke-width="4"
   />
-  <rect x="20" width="10" height="30" fill="#fff" />
-  <rect y="10" width="50" height="10" fill="#fff" />
-  <rect x="22" width="6" height="30" fill="#C8102E" />
-  <rect y="12" width="50" height="6" fill="#C8102E" />
+  <rect class="cross" x="20" width="10" height="30" fill="var(--flag-paper, #fff)" />
+  <rect class="cross" y="10" width="50" height="10" fill="var(--flag-paper, #fff)" />
+  <rect class="cross" x="22" width="6" height="30" fill="var(--flag-tint, #C8102E)" />
+  <rect class="cross" y="12" width="50" height="6" fill="var(--flag-tint, #C8102E)" />
 </svg>

@@ -1,36 +1,28 @@
-import { Flag, type FlagAlign, type FlagRatio } from 'doyouhaveaflag';
+import { Flag, type FlagRatio } from 'doyouhaveaflag';
 import { useState } from 'react';
 import { FLAGS } from '../flags';
 
 const RATIOS: readonly FlagRatio[] = ['4:3', '3:2', '1:1', 'native'];
-const ALIGNS: readonly FlagAlign[] = [
-  'center',
-  'top',
-  'bottom',
-  'left',
-  'right',
-  'top left',
-  'top right',
-  'bottom left',
-  'bottom right',
-];
 
 type Loading = '' | 'lazy' | 'eager';
 
 export function Playground() {
   const [flagId, setFlagId] = useState(FLAGS[0].id);
   const [ratio, setRatio] = useState<FlagRatio>('3:2');
-  const [align, setAlign] = useState<FlagAlign>('center');
   const [rounded, setRounded] = useState(false);
+  const [mono, setMono] = useState(false);
   const [alt, setAlt] = useState(FLAGS[0].name);
   const [lang, setLang] = useState('en-GB');
   const [loading, setLoading] = useState<Loading>('');
 
   const flag = FLAGS.find((entry) => entry.id === flagId) ?? FLAGS[0];
 
-  const props: string[] = [`src={${flag.id}Url}`, `ratio="${ratio}"`];
-  if (align !== 'center') props.push(`align="${align}"`);
+  const props: string[] = [
+    `artwork={{ id: '${flag.id}', src: ${flag.id}Url, viewBox: '${flag.viewBox}' }}`,
+    `ratio="${ratio}"`,
+  ];
   if (rounded) props.push('rounded');
+  if (mono) props.push('mono');
   if (alt !== '') props.push(`alt="${alt}"`);
   if (lang !== '') props.push(`lang="${lang}"`);
   if (loading !== '') props.push(`loading="${loading}"`);
@@ -73,21 +65,6 @@ export function Playground() {
           </select>
         </label>
 
-        <label className="playground__field">
-          <span className="playground__label">Align</span>
-          <select
-            value={align}
-            onChange={(event) => setAlign(event.target.value as FlagAlign)}
-            disabled={ratio === 'native'}
-          >
-            {ALIGNS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className="playground__field playground__field--inline">
           <input
             type="checkbox"
@@ -95,6 +72,15 @@ export function Playground() {
             onChange={(event) => setRounded(event.target.checked)}
           />
           <span className="playground__label">Rounded</span>
+        </label>
+
+        <label className="playground__field playground__field--inline">
+          <input
+            type="checkbox"
+            checked={mono}
+            onChange={(event) => setMono(event.target.checked)}
+          />
+          <span className="playground__label">Mono</span>
         </label>
 
         <label className="playground__field">
@@ -133,12 +119,12 @@ export function Playground() {
           className={`playground__stage${rounded ? ' playground__stage--rounded' : ''}`}
         >
           <Flag
-            src={flag.src}
+            artwork={flag}
             ratio={ratio}
-            align={align}
             alt={alt}
             lang={lang || undefined}
             rounded={rounded}
+            mono={mono}
             loading={loading || undefined}
           />
         </div>

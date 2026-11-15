@@ -32,7 +32,7 @@ export function Wall() {
             <div className="wall__frames">
               {ratios.map((ratio) => (
                 <div key={ratio} className="wall__frame">
-                  <Flag src={flag.src} ratio={ratio} alt={flag.name} />
+                  <Flag artwork={flag} ratio={ratio} alt={flag.name} />
                   <span className="wall__label">{ratio}</span>
                 </div>
               ))}

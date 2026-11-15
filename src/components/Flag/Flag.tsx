@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react';
+import { Artwork } from '../Artwork';
+import { TONES } from '../../tones';
 import type { FlagProps, FlagRatio } from './types';
 
 const ASPECT_RATIOS: Record<Exclude<FlagRatio, 'native'>, string> = {
@@ -10,53 +12,63 @@ const ASPECT_RATIOS: Record<Exclude<FlagRatio, 'native'>, string> = {
 const DEFAULT_RATIO: FlagRatio = '3:2';
 
 /**
- * A flag rendered as a `<picture>` wrapping an `<img>`.
+ * The monochrome palette, expressed as the three custom properties the artwork
+ * resolves. `k60` for the tint rather than `k50`: 60% ink over white is
+ * `#666666`, which clears 5.7:1 against paper where a true mid-grey would not.
+ */
+const MONO: CSSProperties = {
+  '--flag-ink': TONES.k100,
+  '--flag-tint': TONES.k60,
+  '--flag-paper': TONES.k0,
+} as CSSProperties;
+
+/**
+ * A flag: the artwork in a display box, with the flag-specific decisions made
+ * here and the rendering mechanics left to `Artwork`.
  *
- * The `<picture>` is the styling hook: it is always `display: block` (an
- * inline `<picture>` silently ignores border, radius and overflow) and always
- * carries the `flag` class. The functional styles live inline so the package
- * ships no stylesheet at all — a consumer never has to remember an import, and
- * there is no CSS for `sideEffects` to drop.
+ * Those decisions are the ratio and its default, the `flag` class, `rounded`,
+ * and the mono palette. Tone never enters the renderer — it arrives as three
+ * inherited custom properties on the wrapper, travels down through the `<use>`
+ * shadow tree, and is resolved by `var()` rules the artwork already carries,
+ * with their original colours as fallbacks.
  *
- * Cropping is `object-fit: cover` against the box set by `ratio`, origin
- * centre. `object-fit` is not inherited, so it is declared on the `<img>`.
+ * Crop alignment is deliberately *not* one of the decisions made here. Which
+ * part of a flag is dispensable is a fact about the flag, so it arrives with
+ * the artwork instead of being set per instance.
  */
 export function Flag({
-  src,
+  artwork,
   ratio = DEFAULT_RATIO,
   alt = '',
   lang,
-  align = 'center',
   className,
   rounded = false,
   loading,
+  mono = false,
 }: FlagProps): ReactElement {
   const isNative = ratio === 'native';
 
-  const pictureStyle: CSSProperties = {
-    display: 'block',
-    width: '100%',
-    overflow: 'hidden',
-    // No aspect-ratio when native: the artwork's own ratio sizes the box.
-    ...(isNative ? {} : { aspectRatio: ASPECT_RATIOS[ratio] }),
-    ...(rounded ? { borderRadius: '50%' } : {}),
-  };
-
-  const imgStyle: CSSProperties = {
-    display: 'block',
-    width: '100%',
-    height: isNative ? 'auto' : '100%',
-    objectFit: 'cover',
-    // centre is the CSS default, so only emit a rule where it deviates.
-    ...(align === 'center' ? {} : { objectPosition: align }),
-  };
+  const style: CSSProperties | undefined =
+    mono || rounded
+      ? {
+          ...(mono ? MONO : {}),
+          ...(rounded ? { borderRadius: '50%' } : {}),
+        }
+      : undefined;
 
   return (
-    <picture
+    <Artwork
+      src={artwork.src}
+      id={artwork.id}
+      viewBox={artwork.viewBox}
+      // No aspect-ratio when native: the artwork's own ratio sizes the box.
+      aspectRatio={isNative ? undefined : ASPECT_RATIOS[ratio]}
+      align={artwork.align}
+      alt={alt}
+      lang={lang}
+      loading={loading}
       className={className === undefined ? 'flag' : `flag ${className}`}
-      style={pictureStyle}
-    >
-      <img src={src} alt={alt} lang={lang} loading={loading} style={imgStyle} />
-    </picture>
+      style={style}
+    />
   );
 }

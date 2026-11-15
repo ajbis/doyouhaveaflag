@@ -1,2 +1,2 @@
 export { Flag } from './Flag';
-export type { FlagAlign, FlagProps, FlagRatio } from './types';
+export type { FlagProps, FlagRatio } from './types';

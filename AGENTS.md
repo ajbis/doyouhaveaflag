@@ -51,14 +51,15 @@ Decisions settled and browser-verified, now implemented in `src/`. Deviations fr
 
 ### Assets
 
-- Ship real `.svg` files and render through `<img>` — **not** React-generated inline SVG
-- Native `loading="lazy"` exists only on `<img>`/`<iframe>`; an inline `<svg>` fetches nothing, so there is no request to defer and every flag would ship inside the JS bundle instead
-- Shipped assets carry a `viewBox` of the flag's **native dimensions** (Union Flag `0 0 50 30`) and **no `width`/`height`** — `object-fit` needs only the ratio, which the `viewBox` supplies. Most Commons artwork arrives with both, so normalise on ingest
+- Ship real `.svg` files and draw them through **`<use>`** — not React-generated inline SVG, and no longer through `<img>` either. The file stays a file; the page asks for it by reference
+- **Why not `<img>`.** An `<img>` is a closed picture: nothing inside it can be addressed, so the named shapes we need to recolour or later move are unreachable from the page. A `<use>` clones the artwork into a _closed_ shadow tree too — measured: `shadowRoot` is `null` and `querySelector('.mark')` finds nothing — but **inherited custom properties do reach in**, and that is the one channel that lets a host recolour named shapes without editing the file
+- **Why not inline React SVG either.** Every flag would ship inside the JS bundle, and the artwork could no longer be cached, opened as a file, or lazily fetched
+- Shipped assets carry a `viewBox` of the flag's **native dimensions** (Union Flag `0 0 50 30`), **no `width`/`height`**, and a root `id` equal to the filename stem (`gb`) — which is the fragment `<use href="…#gb">` targets
 - **Built as inline styles, not the stylesheet below.** The package ships no CSS at all: a consumer never has to remember an import, and there is no stylesheet for `sideEffects` to drop. `Flag.tsx` applies these rules as `style` props instead. The `.flag` class still exists as the consumer's styling hook — it is always present, and `className` merges onto it
 
-### The `<picture>` wrapper
+### The wrapper
 
-The `<picture>` is the single styling hook — class, border, radius and rounding all hang off it.
+The wrapper `<span>` is the single styling hook — class, border, radius and rounding all hang off it. `<Artwork>` renders it; `<Flag>` supplies the `flag` class.
 
 ```css
 .flag {
@@ -66,20 +67,22 @@ The `<picture>` is the single styling hook — class, border, radius and roundin
   width: 100%;
   overflow: hidden;
 }
-.flag > img {
+.flag > svg {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 100%; /* auto when the box ratio comes from the artwork */
+  overflow: hidden;
 }
 ```
 
-- `<picture>` defaults to `display: inline` — without `display: block`, `border`, `border-radius` and `overflow` do nothing
-- `object-fit` is **not inherited**: declared on the `<picture>` it leaves the `<img>` at `fill` and the image fails to fill its box. It must address `picture > img`
-- `object-position` likewise goes on the child, selected by the class on the `<picture>`
+- A `<span>` defaults to `display: inline` — without `display: block`, `border`, `border-radius` and `overflow` do nothing
+- The crop lives entirely on the `<svg>`: its `viewBox` is the artwork's own geometry and `preserveAspectRatio="… slice"` is `object-fit: cover`
+- `height: 100%` while the wrapper has an `aspect-ratio` (the box has a height to fill). Without one the height is `auto`, so the artwork's own ratio sizes the box and nothing is cropped
+- **`data:` → `blob:` shim.** `<use>` renders **nothing at all** for a `data:` target — silently, no console message — and bundlers inline assets under `assetsInlineLimit` by default, so an ordinary small flag would simply vanish. `Artwork` therefore decodes a `data:` source into a `blob:` URL in a layout effect: settled before first paint, and non-existent on the server, where server and client both render without the `<use>` and so hydrate to the same tree
 
 ### Crop and ratios
 
-- Crop model: `object-fit: cover`, origin **centre**
+- Crop model: `preserveAspectRatio="… slice"`, which is `object-fit: cover`, anchored at the **centre** by default (see Alignment)
 - Display options: `4:3`, `3:2`, `1:1`, `Native` — **default `3:2`**
 - `3:2` equals the most common flag ratio (2:3), so the default shows most flags uncropped; `4:3` would crop essentially every flag
 - Do **not** support the official 1:2 Union Flag
@@ -87,22 +90,28 @@ The `<picture>` is the single styling hook — class, border, radius and roundin
 
 ### Alignment
 
-- **No modifier classes.** Alignment sets `object-position` on the `<img>` inline, using the CSS `object-position` vocabulary: `center`, the four edges, and the four corners
-- **Centre is the baseline and emits no rule at all** — `Flag.tsx` omits the declaration unless `align` deviates from `center`, so the CSS default does the work. The original plan was per-alignment classes with names TBD; inline styles made the class names unnecessary while preserving the "only where it deviates" rule
+- **Alignment is per flag, never per instance.** Which part of a flag is dispensable is a fact about the flag — the Union Flag is always centred, a canton flag would always favour its hoist — so it lives on the descriptor as `ArtworkSource.align` and `Flag` passes it straight through instead of accepting it as a prop. `FlagAlign` was deleted with the prop; `Align` stays, because `Artwork` still takes it
+- **`align` was cut from `FlagProps` for a second reason.** The follow-up artwork offsets (offset/scale of named shapes) are meant to control fit, so a caller-facing anchor would be a second, competing mechanism composing unpredictably with them. Fit needs exactly one owner, and it is the artwork
+- **Centre is the default.** `xMidYMid slice` is right for the balanced designs — saltires, tricolours, discs, crosses — that make up most flags, and for a horizontal crop of a vertical tricolour it is the only anchor that leaves the hoist and fly bands equal to each other
+- **No modifier classes.** The anchor maps to the `preserveAspectRatio` attribute inline, using the CSS `object-position` vocabulary: `center`, the four edges, and the four corners
+- **`slice` is always emitted**, and so is the centre anchor — unlike `object-position`, it cannot be left to a default, because an `<svg>`'s own default is `meet` (contain). The "only where it deviates" rule that governed `object-position` does not survive the change of mechanism, and the reason is recorded here rather than silently dropped
+- Both axes are always named. `slice` decides for itself which one overflows; naming the other is a no-op rather than a conflict
 
 ### Accessibility
 
 - No country name in the SVG `<title>` — it locks the asset to English only
-- The a11y text setting takes **text plus a lang code** and passes both through (`alt` + `lang` on the `<img>`). Whether that's a country, region, ISO code, English, or the country's own language is up to the use case, not the library
+- The a11y text setting takes **text plus a lang code** and passes both through: `role="img"` + `aria-label` + `lang` on the `<svg>`. Whether that's a country, region, ISO code, English, or the country's own language is up to the use case, not the library
+- An empty `alt` (the default) marks the artwork decorative — the `<svg>` gets `aria-hidden` instead of a role, matching what `alt=""` meant on the old `<img>`
 
 ### Lazy loading
 
-Two mechanisms, chosen by context:
+**`<use>` has no native lazy loading.** Measured: a `<use>` fetches its target the moment it enters the document — offscreen, and even inside a `display:none` subtree — where `<img loading="lazy">` waits. `loading="lazy"` therefore has to gate the **element's existence**, not a `src`: `Artwork` holds the `<use>` out of the document until an `IntersectionObserver` fires.
 
-- **Dropdown rows** — `data-src` + `IntersectionObserver` with `root` = the dropdown, `threshold: 0`
-- **Flags in normal page flow** — native `loading="lazy"`, which is correct there because the document viewport _is_ the right root
+- The observer uses the **viewport** root with `rootMargin: '1000px'`. Native lazy loading's real advantage was its connection-aware distance threshold, which prefetched well ahead of the fold so a fast scroll never reached empty boxes; a bare `threshold: 0` waits for actual intersection and gives that back
+- **Inlined sources are never gated.** A `data:` flag has no request to defer, so gating it would only delay the paint. `loading="lazy"` is deliberately inert there — which is also what the README promises
+- **A panel-rooted variant is not implemented** (there is no dropdown yet). It wants `root` = the panel and `threshold: 0`, because a clipped panel's rows are not "near the viewport" in any useful sense. The measurements below are why that combination exists rather than the one above:
 
-`loading="lazy"` cannot serve the dropdown: its root is the document viewport carrying an ~800px margin (measured — a row 804px below the fold fetched, 837px did not), and a 300px dropdown near the top of the page puts ~36 clipped rows inside that margin. Measured on 60 images in a 300px scroll container:
+Measured on 60 images in a 300px scroll container, native `loading="lazy"` vs IO with `root: panel`, `threshold: 0`:
 
 | Phase                       | `loading="lazy"`      | IO `root: panel` |
 | --------------------------- | --------------------- | ---------------- |
@@ -110,7 +119,34 @@ Two mechanisms, chosen by context:
 | after open — 9 rows visible | 45                    | **9**            |
 | after scroll                | 60                    | 18               |
 
-IntersectionObserver also never fetches rows that were never on screen (18 vs 60). Note that `data-src` rows have no `src`, so `loading="lazy"` is inert on them — drop it there rather than layering the two.
+Native `loading="lazy"` also cannot serve a dropdown at all: its root is the document viewport carrying an ~800px margin (measured — a row 804px below the fold fetched, 837px did not), and a 300px dropdown near the top of the page puts ~36 clipped rows inside that margin. IntersectionObserver never fetches rows that were never on screen (18 vs 60).
+
+### Colour
+
+Every paint in a shipped file is `var(--flag-<role>, <hex>)` — the flag's own colour as the fallback — so a file renders exactly as authored until someone supplies values. Three roles:
+
+- `--flag-ink` — the ground
+- `--flag-tint` — one step lighter; the charge
+- `--flag-paper` — the lightest; fimbriation
+
+Because they are **inherited** custom properties, they can be set on _any ancestor_ and still reach the shapes inside the closed `<use>` shadow tree. That is the entire mechanism: no API, no prop, just ordinary CSS — so brand colours, dark mode and design tokens all work for free.
+
+`mono` is shorthand that sets the three on the wrapper: `TONES.k100` / `TONES.k60` / `TONES.k0`. The ramp is exported as `TONES` (`k100`, `k80`, `k60`, `k40`, `k20`, `k0`) — print's term for black, each step being n% ink over white, so `k60` is `0.6 × #000 + 0.4 × #fff` = `#666666`.
+
+- **Purpose is decoration and UI states**, not identification: a green flag and a red flag are _meant_ to look alike in mono, so cross-flag collisions are accepted outright
+- **The real constraint is within a flag** — no two abutting regions may share a tone. `k100` / `k60` / `k0` gives black, mid-grey and white, and every pairing separates
+- `k60` rather than a true mid-grey: `#666666` gives 5.7:1 against paper, where `#808080` gives 3.95:1 and misses WCAG AA for text
+- `mono` sets the variables on the wrapper itself, so it outranks a value set on an ancestor. Overriding a mono flag means targeting its wrapper
+
+### `<Artwork>` and the descriptor
+
+`Artwork` is the primitive: a referenced vector drawn into a sized, cropped box. It owns the mechanics — geometry (as `viewBox`, or `width` + `height`, or `nativeRatio`), the display box, the crop anchor, the `<use>`, the `blob:` shim, the observer, a11y — and knows nothing about flags, palettes, or which ratios are worth offering.
+
+`Flag` supplies the flag meaning: the descriptor, the `FlagRatio` set and its `3:2` default, the `flag` class, `rounded`, and `mono`.
+
+**The descriptor is the coupling.** `ArtworkSource` is `{ id, src, viewBox, align? }` — the facts about a file that the renderer needs and cannot recover by measurement, because the `<use>` shadow tree is closed, plus the one crop decision that belongs to the flag rather than to the caller. The demo's `FlagEntry extends ArtworkSource`, so one object is both the catalogue entry and the prop, and the `viewBox` is asserted against the shipped file in tests so it cannot drift from what ships.
+
+Exported from the package root: `Artwork`, `ArtworkProps`, `ArtworkSource`, `Align`, `TONES`, alongside `Flag`, `FlagProps` and `FlagRatio`.
 
 ### Format — SVG or PNG
 
@@ -121,7 +157,9 @@ No library-wide default: format is a **per-flag × per-display-size** decision.
 - **Variant selection is the biggest lever**: Ecuador civil 303 B vs state 279,145 B (922×); Peru civil 381 B vs state 138,213 B (363×) — default to the civil variant
 - Corpus of 195 sovereign flags: 986.9 KiB gz total, median 310 B, mean 5,183 B — the top decile (19 flags) is 78.5% of the bytes
 
-Open at build time: the per-alignment class names, and whether the heavy tail ships PNG variants.
+**PNG is now incompatible with recolouring.** A PNG has no named shapes and no `var()`, so a PNG variant could never take `--flag-*` or `mono` — `<use>` needs SVG. If the heavy tail ever ships as PNG it is a _non-recolourable_ fallback, and that trade has to be made knowingly: the size win is real, and what it costs is the whole Colour mechanism above.
+
+Open at build time: whether the heavy tail ships PNG variants — with the recolouring cost attached.
 
 ## Packaging (npm)
 
@@ -140,8 +178,8 @@ What differs from shipping a library rather than an app, and why:
 
 The package cannot force artwork to stay out of the JS. `assetsInlineLimit` (Vite default `4096`) decides per file whether it base64s into the bundle or emits as a file — and it is a **continuous dial**, not all-or-nothing: `0` makes everything a file, any other value just moves the cutoff.
 
-- **Light flags inline** — no request, nothing to lazy-load, and you pay only for the flags you actually import
-- **Heavy flags emit** — cacheable, and deferrable by `loading="lazy"` or the IntersectionObserver strategy, which only works on a real URL
+- **Light flags inline** — no request, nothing to lazy-load, and you pay only for the flags you actually import. `loading="lazy"` is inert on them by design, because there is nothing to defer
+- **Heavy flags emit** — cacheable, and deferrable by `loading="lazy"`, which for `<use>` means an IntersectionObserver holding the element out of the document until it nears the viewport
 - By default the expensive ones are the ones you can defer (top decile of a full set = 78.5% of bytes), so **no configuration is required**
 - `new URL(..., import.meta.url)` does **not** escape this — verified, it inlines too
 
@@ -158,6 +196,7 @@ The package cannot force artwork to stay out of the JS. `assetsInlineLimit` (Vit
 - **`vitest.config.ts` does not merge `vite.config.ts`** — that file sets `root: demo/`, which would hide `src/` from the runner. It declares the React plugin itself instead
 - **No stylesheet** — see Architecture → Assets
 - **No `vite-plugin-dts`** — declarations come from `tsc -p tsconfig.build.json` with `emitDeclarationOnly`, which is zero-dependency and predictable
+- **Artwork edits do not hot-reload.** Vite's watcher never fires for `src/assets/flags/*.svg` — a `touch` logs nothing where `src/*.ts` logs an HMR update — so the dev server keeps serving the transform it cached at startup. A changed flag then renders the _previous_ version of the file with no console error anywhere, which reads exactly like a broken `<use>`. **Restart `yarn dev` after editing artwork.**
 
 ## Flag artwork
 
@@ -180,11 +219,23 @@ FOTW — is for exploration only; see
    almost always carries both; strip them on ingest.
 5. **Every number traceable to a construction sheet.** If a coordinate isn't in
    the spec it must be derivable from it in one sentence.
-6. **Flat literal-hex fills.** No gradients in field or stripe geometry and no
-   `currentColor` — the file has to render standalone inside `<img>`.
-7. **ids prefixed per flag** (`gb-counterchange`, never `t`).
+6. **Every paint is a `var()` over a literal hex.** No gradients in field or
+   stripe geometry, and no `currentColor`. Each fill or stroke reads
+   `var(--flag-<role>, <hex>)` with the flag's own colour as the fallback, so
+   the file renders identically whether or not a host supplies values — a plain
+   SVG viewer sees only the fallbacks. Roles, not shape names: `ink` (ground),
+   `tint` (one step lighter, the charge), `paper` (lightest, fimbriation).
+7. **ids prefixed per flag** (`gb-counterchange`, never `t`). The root `<svg>`
+   also carries the filename stem (`id="gb"`), which is the `<use>` fragment
+   target.
 8. **Strip everything else on ingest** — rdf, dc, inkscape, metadata. In the
    reference set, most of a heavy file's bytes are not geometry at all.
+9. **An XML comment may not contain `--`.** Every custom property name starts
+   with two, so the obvious comment — "this paint is `var(--flag-ink, …)`" —
+   makes the file **not well-formed**. It fails to parse in `<img>`, in `<use>`,
+   everywhere, and it fails _silently_: no console error, just an empty box.
+   Name the roles in prose and point at the README instead. This cost a full
+   debug cycle once; the artwork tests now parse every shipped file.
 
 ### Primitives first, merged shapes by exception
 
